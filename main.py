@@ -71,6 +71,37 @@ def create_population_greedy_algo(N, w_max, things, population_size):
 	return population
 
 
+def crossover_one_point(N, parent1, parent2):
+	child1 = []
+	child2 = []
+	point = random.randint(1, N - 1)
+	for i in range(0, point):
+		child1.append(parent1[i])
+		child2.append(parent2[i])
+	for i in range(point, N):
+		child1.append(parent2[i])
+		child2.append(parent1[i])
+	return child1, child2
+
+
+def crossover_two_points(N, parent1, parent2):
+	child1 = []
+	child2 = []
+	point1 = random.randint(1, N // 2)
+	point2 = random.randint(N // 2 + 1, N - 1)
+	print(point1, point2)
+	for i in range(0, point1):
+		child1.append(parent1[i])
+		child2.append(parent2[i])
+	for i in range(point1, point2):
+		child1.append(parent2[i])
+		child2.append(parent1[i])
+	for i in range(point2, N):
+		child1.append(parent1[i])
+		child2.append(parent2[i])
+	return child1, child2
+
+
 N = int(input("Введите N: "))
 w_max = int(input("Введите весовое ограничение: "))
 things = []
