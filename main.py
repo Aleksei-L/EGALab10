@@ -17,7 +17,7 @@ def roulette(prices):
 			return item
 
 
-def create_population_random(N):
+def create_population_random(N, population_size):
 	population = []
 	for i in range(0, population_size):
 		temp = []
@@ -27,7 +27,7 @@ def create_population_random(N):
 	return population
 
 
-def create_population_random_control(N, w_max, things):
+def create_population_random_control(N, w_max, things, population_size):
 	population = []
 	for i in range(0, population_size):
 		temp = []
@@ -102,6 +102,46 @@ def crossover_two_points(N, parent1, parent2):
 	return child1, child2
 
 
+def crossover_homogeneous(N, parent1, parent2):
+	child1 = []
+	child2 = []
+	for i in range(0, N):
+		rand = random.randint(1, 2)
+		if rand == 1:
+			child1.append(parent1[i])
+			child2.append(parent2[i])
+		else:
+			child1.append(parent2[i])
+			child2.append(parent1[i])
+	return child1, child2
+
+
+# TODO Узнать правильно ли написана мутация
+def mutation_one_point(N, person):
+	for i in range(0, N):
+		rnd = random.uniform(0, 1)
+		if 0 < rnd <= 0.01:
+			person[i] = int(not person[i])
+			break
+	return person
+
+
+def get_fitness(N, things, person):
+	res = 0.0
+	for i in range(0, N):
+		if person[i] == 1:
+			res += things[i][0] / things[i][1]
+	return round(res, 2)
+
+
+def get_weight(N, things, person):
+	res = 0
+	for i in range(0, N):
+		if person[i] == 1:
+			res += things[i][1]
+	return res
+
+
 N = int(input("Введите N: "))
 w_max = int(input("Введите весовое ограничение: "))
 things = []
@@ -111,30 +151,29 @@ population_size = int(input("Введите кол-во особей в попу
 operator_choices = [
 	int(input(
 		"Оператор формирования начальной популяции:\n1) Случайный\n2) Случайный с контролем\n3) Жадный алгоритм\n>> ")),
-	int(input("Оператор кроссовера:\n1) Одноточечный\n2) Двуточечный\n3) Многоточечный\n>> "))
-	# int(input("Оператор мутации:\n1)\n2)\n>> ")),
+	int(input("Оператор кроссовера:\n1) Одноточечный\n2) Двуточечный\n3) Однородный\n>> ")),
+	int(input("Оператор мутации:\n1) Точечная\n2)\n3)\n>> ")),
 	# int(input("Оператор селекции:\n1)\n2)\n>> "))
 ]
 
 population = []
 if operator_choices[0] == 1:
-	population = create_population_random(N)
+	population = create_population_random(N, population_size)
 elif operator_choices[0] == 2:
-	population = create_population_random_control(N, w_max, things)
+	population = create_population_random_control(N, w_max, things, population_size)
 elif operator_choices[0] == 3:
 	population = create_population_greedy_algo(N, w_max, things, population_size)
 
-crossover_point_number = 0
-if operator_choices[1] == 1:
-	crossover_point_number = 1
-elif operator_choices[1] == 2:
-	crossover_point_number = 2
-elif operator_choices[1] == 3:
-	crossover_point_number = int(input("Введите кол-во точек: "))
-
-for t in range(0, 10):
-	print("Поколение " + str(t))
-	print("Все особи")
+for t in range(0, 1):
+	print("Поколение", t)
+	print("Все особи:")
+	maxim_fitness_person = 0
+	maxim_person = population[0]
 	for i in population:
-		print(str(i) + " с приспособленностью " + str(1))  # Заглушка: узнать как задаётся приспособленность
-	print("Лучшая особь: " + str(population[0]) + " с приспособленностью " + str(1))  # Заглушка: то же самое
+		fit = get_fitness(N, things, i)
+		if fit > maxim_fitness_person:
+			maxim_fitness_person = fit
+			maxim_person = i
+		print(i, "с приспособленностью", fit, "и весом", get_weight(N, things, i))
+	print("Лучшая особь:", maxim_person, "с приспособленностью", get_fitness(N, things, maxim_person), "и весом",
+		  get_weight(N, things, maxim_person))
