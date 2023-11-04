@@ -1,5 +1,6 @@
 import numpy as np
 import random
+from copy import deepcopy
 
 
 def roulette(prices):
@@ -13,7 +14,7 @@ def roulette(prices):
 	summ = 0
 	for item in prices:
 		summ += item[1]
-		if summ >= res or len(prices) == 1:
+		if round(summ) >= res or len(prices) == 1:
 			return item
 
 
@@ -89,7 +90,6 @@ def crossover_two_points(N, parent1, parent2):
 	child2 = []
 	point1 = random.randint(1, N // 2)
 	point2 = random.randint(N // 2 + 1, N - 1)
-	print(point1, point2)
 	for i in range(0, point1):
 		child1.append(parent1[i])
 		child2.append(parent2[i])
@@ -116,16 +116,65 @@ def crossover_homogeneous(N, parent1, parent2):
 	return child1, child2
 
 
-# TODO Узнать правильно ли написана мутация
-def mutation_one_point(N, person):
-	for i in range(0, N):
+# При выпадении вероятности меняет локус и завершает мутацию особи
+# TODO Правильно ли написана мутация? Какая у неё вероятность?
+def mutation_one_point(N, population_size, population):
+	population_copy = deepcopy(population)
+	mutation_set = []
+	for i in range(0, population_size):
+		for j in range(0, N):
+			rnd = random.uniform(0, 1)
+			if 0 < rnd <= 0.01:
+				population_copy[i][j] = int(not population_copy[i][j])
+				mutation_set.append(population_copy[i])
+				break
+	return mutation_set
+
+
+# При выпадении вероятности генерирует область и инвертирует её
+# TODO Это точно инверсия? Та же вероятность что и с хромосомной!
+def mutation_inversion(N, population_size, population):
+	population_copy = deepcopy(population)
+	mutation_set = []
+	for i in range(0, population_size):
 		rnd = random.uniform(0, 1)
 		if 0 < rnd <= 0.01:
-			person[i] = int(not person[i])
-			break
-	return person
+			left = random.randint(1, N // 2)
+			right = random.randint(N // 2 + 1, N - 1)
+			for j in range(left, (left + right) // 2 + 1):
+				population_copy[i][j], population_copy[i][right - j + left] = (
+					population_copy[i][right - j + left], population_copy[i][j])
+			mutation_set.append(population_copy[i])
+	return mutation_set
 
 
+# При выпадении вероятности инвертирует хромосому и продолжает просмотр
+# TODO Какая необходима вероятность мутации? Текущая допускает мутацию 1 хромосомы из 50
+def mutation_chromosomal(population_size, population):
+	population_copy = deepcopy(population)
+	mutation_set = []
+	for i in range(0, population_size):
+		rnd = random.uniform(0, 1)
+		if 0 < rnd <= 0.01:
+			mutation_set.append(list(map(lambda x: int(not x), population_copy[i])))
+	return mutation_set
+
+
+# Модификация генотипа таким образом, чтобы первыми выбросить наименее ценные предметы
+def genotype_modification(N, w_max, things, person):
+	person_copy = person.copy()
+	while get_weight(N, things, person_copy) > w_max:
+		minim = 1000
+		minim_index = 1000
+		for i in range(0, N):
+			if person_copy[i] == 1 and things[i][0] < minim:
+				minim = things[i][0]
+				minim_index = i
+		person_copy[minim_index] = 0
+	return person_copy
+
+
+# Получение приспособленности кодировки
 def get_fitness(N, things, person):
 	res = 0.0
 	for i in range(0, N):
@@ -134,6 +183,7 @@ def get_fitness(N, things, person):
 	return round(res, 2)
 
 
+# Получение веса кодировки
 def get_weight(N, things, person):
 	res = 0
 	for i in range(0, N):
@@ -152,10 +202,11 @@ operator_choices = [
 	int(input(
 		"Оператор формирования начальной популяции:\n1) Случайный\n2) Случайный с контролем\n3) Жадный алгоритм\n>> ")),
 	int(input("Оператор кроссовера:\n1) Одноточечный\n2) Двуточечный\n3) Однородный\n>> ")),
-	int(input("Оператор мутации:\n1) Точечная\n2)\n3)\n>> ")),
+	int(input("Оператор мутации:\n1) Точечная\n2) Макромутация инверсией\n3) Хромосомная\n>> "))
 	# int(input("Оператор селекции:\n1)\n2)\n>> "))
 ]
 
+# Создание начальной популяции
 population = []
 if operator_choices[0] == 1:
 	population = create_population_random(N, population_size)
@@ -164,7 +215,8 @@ elif operator_choices[0] == 2:
 elif operator_choices[0] == 3:
 	population = create_population_greedy_algo(N, w_max, things, population_size)
 
-for t in range(0, 1):
+for t in range(0, 5):
+	# Вывод всех особей поколения и наилучшей особи
 	print("Поколение", t)
 	print("Все особи:")
 	maxim_fitness_person = 0
@@ -177,3 +229,100 @@ for t in range(0, 1):
 		print(i, "с приспособленностью", fit, "и весом", get_weight(N, things, i))
 	print("Лучшая особь:", maxim_person, "с приспособленностью", get_fitness(N, things, maxim_person), "и весом",
 		  get_weight(N, things, maxim_person))
+
+	# Создание новой популяции
+	new_population = []
+	# new_population_size = population_size * 2
+
+	# Выборка родителей и скрещивание особей для получения потомства
+	# TODO Стратегия выбора родителей: рандом или мнение пользователя? (Пока рандом)
+	# Рандомный выбор стратегии отбора родителей
+	rand_choice = random.randint(1, 2)
+	print("Рандомная стратегия") if rand_choice == 1 else print("Рулеточная стратегия")
+	for i in range(0, population_size):
+		parent1, parent2 = [], []
+		if rand_choice == 1:  # Рандомный выбор родителей
+			parent1, parent2 = random.sample(population, 2)
+		else:  # Выбор с помощью рулетки
+			prices = []
+			for j in range(0, population_size):
+				prices.append((j, get_fitness(N, things, population[j])))
+			parent1_item = roulette(prices)
+			prices.remove(parent1_item)
+			parent2_item = roulette(prices)
+			parent1 = population[parent1_item[0]]
+			parent2 = population[parent2_item[0]]
+
+		# Получение потомства
+		child1, child2 = [], []
+		if operator_choices[1] == 1:
+			child1, child2 = crossover_one_point(N, parent1, parent2)
+		elif operator_choices[1] == 2:
+			child1, child2 = crossover_two_points(N, parent1, parent2)
+		elif operator_choices[1] == 3:
+			child1, child2 = crossover_homogeneous(N, parent1, parent2)
+		# TODO Кроссовер даёт 2 особей, а выбрать нужно одну - как это сделать лучше? (Пока - по приспособленности)
+		# TODO UPD Суть этого всего в том чтобы позже сократить кол-во особей во время отбора?
+		# if get_fitness(N, things, child1) > get_fitness(N, things, child2):
+		# 	new_population.append(child1)
+		# else:
+		# 	new_population.append(child2)
+		new_population.append(child1)
+		new_population.append(child2)
+
+	# Когда новая популяция будет получена она заменит собой старую
+	# TODO Наверное - пока рано
+	# population = new_population
+
+	# Мутация полученного потомства
+	# TODO Должны ли мутанты заменяться сразу или просто добавляться в поколение?
+	mutation_set = []
+	if operator_choices[2] == 1:
+		mutation_set = mutation_one_point(N, len(new_population), new_population)
+	elif operator_choices[2] == 2:
+		mutation_set = mutation_inversion(N, len(new_population), new_population)
+	elif operator_choices[2] == 3:
+		mutation_set = mutation_chromosomal(len(new_population), new_population)
+	for i in mutation_set:
+		new_population.append(i)
+
+	# Обработка ограничений - модификация генотипа особей, которые не подходят под решение задачи
+	for i in range(0, len(new_population)):
+		if get_weight(N, things, new_population[i]) > w_max:
+			new_population[i] = genotype_modification(N, w_max, things, new_population[i])
+
+	# ...
+	next_population = []
+
+	# Среди потомков и мутантов принудительно копируем самую лучшую особь в следующее поколение
+	maxim_fitness_person = 0
+	maxim_person = new_population[0]
+	for i in new_population:
+		fit = get_fitness(N, things, i)
+		if fit > maxim_fitness_person:
+			maxim_fitness_person = fit
+			maxim_person = i
+	next_population.append(maxim_person)
+	new_population.remove(maxim_person)
+
+	# Принудительно скопируем самую лучшую особь в следующее поколение
+	maxim_fitness_person = 0
+	maxim_person = population[0]
+	for i in population:
+		fit = get_fitness(N, things, i)
+		if fit > maxim_fitness_person:
+			maxim_fitness_person = fit
+			maxim_person = i
+	next_population.append(maxim_person)
+	population.remove(maxim_person)
+
+	# Получение коэффициента перекрытия поколений и кол-ва особей для замены
+	G = round(random.uniform(0.01, 1), 2)
+	g = round(G * population_size)
+
+	# Равновероятный отбор g особей из старой популяции для дальнейшей замены
+	g_from_population = random.sample(population, g)
+
+	# TODO Удалять их сейчас или потом?
+	for i in g_from_population:
+		population.remove(i)
