@@ -3,6 +3,7 @@ import random
 from copy import deepcopy
 
 
+# Рулетка с тем большей вероятностью выпадения сектора, чем больше некоторый параметр
 def roulette(prices):
 	sum_prices = 0
 	for item in prices:
@@ -18,6 +19,7 @@ def roulette(prices):
 			return item
 
 
+# Формирование начальной популяции случайным образом, без контроля
 def create_population_random(N, population_size):
 	population = []
 	for i in range(0, population_size):
@@ -28,6 +30,7 @@ def create_population_random(N, population_size):
 	return population
 
 
+# Формирование начальной популяции случайным образом, с контролем
 def create_population_random_control(N, w_max, things, population_size):
 	population = []
 	for i in range(0, population_size):
@@ -46,6 +49,7 @@ def create_population_random_control(N, w_max, things, population_size):
 	return population
 
 
+# Формирование начальной популяции при помощи жадного алгоритма
 def create_population_greedy_algo(N, w_max, things, population_size):
 	population = []
 	for i in range(0, population_size):
@@ -72,6 +76,7 @@ def create_population_greedy_algo(N, w_max, things, population_size):
 	return population
 
 
+# Одноточечный кроссовер
 def crossover_one_point(N, parent1, parent2):
 	child1 = []
 	child2 = []
@@ -85,6 +90,7 @@ def crossover_one_point(N, parent1, parent2):
 	return child1, child2
 
 
+# Двуточечный кроссовер
 def crossover_two_points(N, parent1, parent2):
 	child1 = []
 	child2 = []
@@ -102,6 +108,7 @@ def crossover_two_points(N, parent1, parent2):
 	return child1, child2
 
 
+# Однородный кроссовер при котором выбор аллели для копирования происходит равновероятно
 def crossover_homogeneous(N, parent1, parent2):
 	child1 = []
 	child2 = []
@@ -116,29 +123,29 @@ def crossover_homogeneous(N, parent1, parent2):
 	return child1, child2
 
 
-# При выпадении вероятности меняет локус и завершает мутацию особи
-# TODO Правильно ли написана мутация? Какая у неё вероятность?
+# Мутация посредством точечноого изменения хоромосомы, точка мутации и вероятность мутации выбираются случайно
 def mutation_one_point(N, population_size, population):
 	population_copy = deepcopy(population)
 	mutation_set = []
+	chance_to_mutation = random.randint(1, 25)
 	for i in range(0, population_size):
-		for j in range(0, N):
-			rnd = random.uniform(0, 1)
-			if 0 < rnd <= 0.01:
-				population_copy[i][j] = int(not population_copy[i][j])
-				mutation_set.append(population_copy[i])
-				break
+		rnd = random.uniform(0, 1)
+		if 0 < rnd <= round(chance_to_mutation / 100, 2):
+			point = random.randint(0, N - 1)
+			population_copy[i][point] = int(not population_copy[i][point])
+			mutation_set.append(population_copy[i])
+			break
 	return mutation_set
 
 
-# При выпадении вероятности генерирует область и инвертирует её
-# TODO Это точно инверсия? Та же вероятность что и с хромосомной!
+# Мутация посредством инвертирования области в хромосоме, область и вероятность мутации выбираются случайно
 def mutation_inversion(N, population_size, population):
 	population_copy = deepcopy(population)
 	mutation_set = []
+	chance_to_mutation = random.randint(1, 25)
 	for i in range(0, population_size):
 		rnd = random.uniform(0, 1)
-		if 0 < rnd <= 0.01:
+		if 0 < rnd <= round(chance_to_mutation / 100, 2):
 			left = random.randint(1, N // 2)
 			right = random.randint(N // 2 + 1, N - 1)
 			for j in range(left, (left + right) // 2 + 1):
@@ -148,37 +155,36 @@ def mutation_inversion(N, population_size, population):
 	return mutation_set
 
 
-# При выпадении вероятности инвертирует хромосому и продолжает просмотр
-# TODO Какая необходима вероятность мутации? Текущая допускает мутацию 1 хромосомы из 50
+# Мутация посредством инвертирования хромосомы, вероятность мутации выбирается случайно от 5% до 25%
 def mutation_chromosomal(population_size, population):
-	population_copy = deepcopy(population)
 	mutation_set = []
+	chance_to_mutation = random.randint(5, 25)
 	for i in range(0, population_size):
 		rnd = random.uniform(0, 1)
-		if 0 < rnd <= 0.01:
-			mutation_set.append(list(map(lambda x: int(not x), population_copy[i])))
+		if 0 < rnd <= round(chance_to_mutation / 100, 2):
+			mutation_set.append(list(map(lambda x: int(not x), population[i])))
 	return mutation_set
 
 
 # Модификация генотипа таким образом, чтобы первыми выбросить наименее ценные предметы
-def genotype_modification(N, w_max, things, person):
-	person_copy = person.copy()
-	while get_weight(N, things, person_copy) > w_max:
-		minim = 1000
-		minim_index = 1000
-		for i in range(0, N):
-			if person_copy[i] == 1 and things[i][0] < minim:
-				minim = things[i][0]
-				minim_index = i
-		person_copy[minim_index] = 0
-	return person_copy
+def genotype_modification(N, w_max, things, population):
+	population_copy = deepcopy(population)
+	for i in population_copy:
+		while get_weight(N, things, i) > w_max:
+			minim = 1000
+			minim_index = 1000
+			for j in range(0, N):
+				if i[j] == 1 and things[j][0] < minim:
+					minim = things[j][0]
+					minim_index = j
+			i[minim_index] = 0
+	return population_copy
 
 
-# Отбирает g особей для переноса в следующее поколение
+# Отбор g особей для переноса в следующее поколение при помощи турниров
 def selection_beta_tournament(new_population_size, new_population, g):
 	g_to_new_population = []
 	for i in range(0, g):
-		# TODO Как мы выбираем чему равна бета?
 		beta = random.randint(2, new_population_size // 2)
 		tournament = random.sample(new_population, beta)
 		fun_maxim_fitness_person = 0
@@ -192,9 +198,7 @@ def selection_beta_tournament(new_population_size, new_population, g):
 	return g_to_new_population
 
 
-# Отбор особей при помощи рулетки
-# TODO Почему в этой селекции одна и та же особь может быть выбрана несколько раз?
-# TODO Сколько селекция должна возвращать особей? g или ню
+# Отбор g особей для переноса в следующее поколение при помощи рулетки
 def selection_proportional(new_population_size, new_population, g):
 	g_to_new_population = []
 	prices = []
@@ -208,6 +212,7 @@ def selection_proportional(new_population_size, new_population, g):
 	return g_to_new_population
 
 
+# Отбор g особей для переноса в следующее поколение при помощи линеаризованной рулетки
 def selection_linear_ranking(new_population_size, new_population, g):
 	g_to_new_population = []
 	new_population_copy = deepcopy(new_population)
@@ -285,17 +290,14 @@ while True:
 	print("Лучшая особь:", maxim_person, "с приспособленностью", get_fitness(N, things, maxim_person), "и весом",
 		  get_weight(N, things, maxim_person))
 
-	# Создание новой популяции
-	new_population = []
-	# new_population_size = population_size * 2
+	# Подготовка репродукционного множества
+	reproduction_set = []
 
-	# Выборка родителей и скрещивание особей для получения потомства
-	# TODO Стратегия выбора родителей: рандом или мнение пользователя? (Пока рандом)
-	# Рандомный выбор стратегии отбора родителей
+	# Выбор родителей и их скрещивание для получения потомства
 	rand_choice = random.randint(1, 2)
 	for i in range(0, population_size):
 		parent1, parent2 = [], []
-		if rand_choice == 1:  # Рандомный выбор родителей
+		if rand_choice == 1:  # Случайный выбор родителей
 			parent1, parent2 = random.sample(population, 2)
 		else:  # Выбор с помощью рулетки
 			prices = []
@@ -315,72 +317,52 @@ while True:
 			child1, child2 = crossover_two_points(N, parent1, parent2)
 		elif operator_choices[1] == 3:
 			child1, child2 = crossover_homogeneous(N, parent1, parent2)
-		# TODO Кроссовер даёт 2 особей, а выбрать нужно одну - как это сделать лучше? (Пока - по приспособленности)
-		# TODO UPD Суть этого всего в том чтобы позже сократить кол-во особей во время отбора?
-		# if get_fitness(N, things, child1) > get_fitness(N, things, child2):
-		# 	new_population.append(child1)
-		# else:
-		# 	new_population.append(child2)
-		new_population.append(child1)
-		new_population.append(child2)
-
-	# Когда новая популяция будет получена она заменит собой старую
-	# TODO Наверное - пока рано
-	# population = new_population
+		reproduction_set.append(child1)
+		reproduction_set.append(child2)
 
 	# Мутация полученного потомства
-	# TODO Должны ли мутанты заменяться сразу или просто добавляться в поколение?
 	mutation_set = []
 	if operator_choices[2] == 1:
-		mutation_set = mutation_one_point(N, len(new_population), new_population)
+		mutation_set = mutation_one_point(N, len(reproduction_set), reproduction_set)
 	elif operator_choices[2] == 2:
-		mutation_set = mutation_inversion(N, len(new_population), new_population)
+		mutation_set = mutation_inversion(N, len(reproduction_set), reproduction_set)
 	elif operator_choices[2] == 3:
-		mutation_set = mutation_chromosomal(len(new_population), new_population)
+		mutation_set = mutation_chromosomal(len(reproduction_set), reproduction_set)
 	for i in mutation_set:
-		new_population.append(i)
+		reproduction_set.append(i)
 
 	# Обработка ограничений - модификация генотипа особей, которые не подходят под решение задачи
-	for i in range(0, len(new_population)):
-		if get_weight(N, things, new_population[i]) > w_max:
-			new_population[i] = genotype_modification(N, w_max, things, new_population[i])
+	reproduction_set = genotype_modification(N, w_max, things, reproduction_set)
 
-	# Подготовливаем следующее поколение
+	# Подготовка следующего поколения
 	next_population = []
 
 	# Получение коэффициента перекрытия поколений и кол-ва особей для замены
 	G = round(random.uniform(0.01, 1), 2)
-	g = round(G * population_size)
+	g = 8  # round(G * population_size)
 
 	# Среди текущего поколения и репродуктивного множества скопируем самую лучшую особь в следующее поколение
 	maxim_fitness_person = 0
-	maxim_person = new_population[0]
+	maxim_person = reproduction_set[0]
 	flag = 0
-	for i in new_population:
-		fit = get_fitness(N, things, i)
-		if fit > maxim_fitness_person:
-			maxim_fitness_person = fit
-			maxim_person = i
-			flag = 1
 	for i in population:
 		fit = get_fitness(N, things, i)
 		if fit > maxim_fitness_person:
 			maxim_fitness_person = fit
 			maxim_person = i
 			flag = 2
+	for i in reproduction_set:
+		fit = get_fitness(N, things, i)
+		if fit > maxim_fitness_person:
+			maxim_fitness_person = fit
+			maxim_person = i
+			flag = 1
 	next_population.append(maxim_person.copy())
-
-	# TODO Кол-во потомков может быть больше кол-ва предков?
-	# if flag == 1:
-	# 	new_population.remove(maxim_person)
-	# elif flag == 2:
-	# 	population.remove(maxim_person)
 
 	# Равновероятный отбор g особей из старой популяции для дальнейшей замены
 	g_from_population = random.sample(population, g)
 
 	# Удаляем всех отобранных особей из популяции, чтобы быстрее скопировать особи в следующее поколение
-	# TODO Удалять их сейчас или потом?
 	for i in g_from_population:
 		population.remove(i)
 
@@ -389,20 +371,26 @@ while True:
 		next_population.append(i.copy())
 
 	# Применяем селекцию для отбора из репродуктивного множества g особей в следующее поколение
-	# TODO Правильно ли подсчитаны числа?
-	#  1 -> лучшая особь из поколения и репродуктивного множества
-	#  |P^t| - g = (population_size - 1) - g -> текущая популяция без самого лучшего и g особей под замену
-	#  |R^t| = g -> g особей отобранных из репродуктивного множества
 	to_new_population = []
 	if operator_choices[3] == 1:
-		to_new_population = selection_beta_tournament(len(new_population), new_population, g)
+		to_new_population = selection_beta_tournament(len(reproduction_set), reproduction_set, g)
 	elif operator_choices[3] == 2:
-		to_new_population = selection_proportional(len(new_population), new_population, g)
+		to_new_population = selection_proportional(len(reproduction_set), reproduction_set, g)
 	elif operator_choices[3] == 3:
-		to_new_population = selection_linear_ranking(len(new_population), new_population, g)
-
+		to_new_population = selection_linear_ranking(len(reproduction_set), reproduction_set, g)
 	for i in range(0, g):
 		next_population.append(to_new_population[i].copy())
+
+	# Регулировка размера популяции - необходима из-за элитарной стратегии селекции
+	if len(next_population) > population_size:
+		minim_fitness_person = 0
+		minim_person = next_population[0]
+		for i in next_population:
+			fit = get_fitness(N, things, i)
+			if fit < minim_fitness_person:
+				minim_fitness_person = fit
+				minim_person = i
+		next_population.remove(minim_person)
 
 	# Смена поколения
 	population = deepcopy(next_population)
@@ -418,11 +406,15 @@ while True:
 
 	if maxim_fitness_person != solution:
 		solution = maxim_fitness_person
+		without_change_solution_counter = 0
 	else:
 		without_change_solution_counter += 1
 
+	# Конечный вывод самой лучшей особи
 	if without_change_solution_counter >= 10:
-		print("Конец эволюции")
+		print("\nКонец эволюции")
+		print("Итог: Лучшая особь:", maxim_person, " с приспособленностью", maxim_fitness_person, "и весом",
+			  get_weight(N, things, maxim_person))
 		break
 
 	t += 1
