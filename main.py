@@ -339,24 +339,21 @@ while True:
 
 	# Получение коэффициента перекрытия поколений и кол-ва особей для замены
 	G = round(random.uniform(0.01, 1), 2)
-	g = 8  # round(G * population_size)
+	g = round(G * population_size)
 
 	# Среди текущего поколения и репродуктивного множества скопируем самую лучшую особь в следующее поколение
 	maxim_fitness_person = 0
 	maxim_person = reproduction_set[0]
-	flag = 0
 	for i in population:
 		fit = get_fitness(N, things, i)
 		if fit > maxim_fitness_person:
 			maxim_fitness_person = fit
 			maxim_person = i
-			flag = 2
 	for i in reproduction_set:
 		fit = get_fitness(N, things, i)
 		if fit > maxim_fitness_person:
 			maxim_fitness_person = fit
 			maxim_person = i
-			flag = 1
 	next_population.append(maxim_person.copy())
 
 	# Равновероятный отбор g особей из старой популяции для дальнейшей замены
@@ -410,7 +407,16 @@ while True:
 	else:
 		without_change_solution_counter += 1
 
-	# Конечный вывод самой лучшей особи
+	# Проверка генетического разнообразия популяции
+	if without_change_solution_counter >= 10:
+		counter_max_fitness = 0
+		for i in population:
+			if get_fitness(N, things, i) == maxim_fitness_person:
+				counter_max_fitness += 1
+		if not counter_max_fitness >= N // 7:
+			without_change_solution_counter = 0
+
+	# Вывод лучшей особи
 	if without_change_solution_counter >= 10:
 		print("\nКонец эволюции")
 		print("Итог: Лучшая особь:", maxim_person, " с приспособленностью", maxim_fitness_person, "и весом",
